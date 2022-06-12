@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import './App.css';
+import $ from 'jquery';
 import blank from './images/blank.png'
 import o from './images/o.png'
 import x from './images/x.png'
@@ -14,24 +15,19 @@ const DRAW = 0;
 
 function App() {
 
-  // let coords = {
-  //   x_coord: 0,
-  //   y_coord: 0
-  // };
-
   const [size_of_board, setSizeOfBoard] = useState(0);
-  const [board, setBoard] = useState();
+  const [reactBoard, setReactBoard] = useState([]);
   const [winning_options, setWinning_options] = useState([]);
 
   const make_all_winning_options = (size_of_board) => {
-    setWinning_options([]);
     let temp_vector = new Array();
+    let temp_winning = new Array();
 
     //rows winning options
     for(let i = 0; i < Math.pow(size_of_board,2); i++){
       temp_vector.push(i);
       if((i+1)%size_of_board == 0){
-        winning_options.push(temp_vector);
+        temp_winning.push(temp_vector);
         temp_vector = [];
       }
     }
@@ -42,7 +38,7 @@ function App() {
       for(let k = 0; k < size_of_board; k++){
         temp_vector.push(i+(k*size_of_board));
       }
-      winning_options.push(temp_vector);
+      temp_winning.push(temp_vector);
       temp_vector = [];
     }
     temp_vector = [];
@@ -52,41 +48,50 @@ function App() {
     for(let k = 0; k < size_of_board; k++){
         temp_vector.push((k*(size_of_board+1)));
       }
-    winning_options.push(temp_vector);
+      temp_winning.push(temp_vector);
     temp_vector = [];
     
     for(let k = 0; k < size_of_board; k++){
         temp_vector.push((size_of_board-1)+(k*(size_of_board-1)));
       }
-    winning_options.push(temp_vector);
+      temp_winning.push(temp_vector);
     temp_vector = [];
     
-    console.log(winning_options)
+
+    setWinning_options(temp_winning)
+  };
+
+  const restart_game = () => {
+    setSizeOfBoard(0);    
+    setReactBoard([]);
+    setWinning_options([]) ; 
   };
 
   const init_board = (sizeOB) => {
-    let temp = new Array();
-    console.log(temp.size)
-    setSizeOfBoard(sizeOB);
-    make_all_winning_options(sizeOB);
-    for(let i = 0; i < Math.pow(sizeOB,2); i++){
-      temp[i] = new Image();
-      temp[i].src = blank;
+    if(size_of_board != 0){
+      alert("click restart if you want to change size")
     }
-
-    
-    setBoard(temp);
+    else{
+      let board = new Array(Math.pow(sizeOB,2));
+      setSizeOfBoard(sizeOB);
+      make_all_winning_options(sizeOB);
+      for(let i = 0; i < Math.pow(sizeOB,2); i++){
+        board[i] = new Image();
+        board[i].src = blank;
+      }
+  
+      setReactBoard(board);
+    }
   };
 
   const game_is_won = (occupied_positions) => {
     let game_won = true;
-    for (let i = 0; i < winning_options.size(); i++)
+    for (let i = 0; i <= winning_options.length; i++)
     {
       game_won = true;
-      if (!(occupied_positions.filter(element => winning_options[i].includes(element))))
+      if (!(winning_options[i]?.every((element) => occupied_positions.includes(element))))
       {
         game_won = false;
-        break;
       }
       if (game_won)
       {
@@ -100,17 +105,17 @@ function App() {
     let occupied_pos = new Array();
     for(let i = 0; i < Math.pow(size_of_board,2); i++){
       if(player == '*'){
-          if(board[i] == PLAYER_SYMBOL || board[i] == COMPUTER_SYMBOL){
-              occupied_pos.push(i);
+          if(reactBoard[i].src == x || reactBoard[i].src == o){
+            occupied_pos.push(i);
           }
       }
       else if (player == 'X'){
-          if(board[i] == PLAYER_SYMBOL){
-              occupied_pos.push(i);
+          if(reactBoard[i].src == x){
+            occupied_pos.push(i);
           }
       }
       else if (player == 'O'){
-          if(board[i] == COMPUTER_SYMBOL){
+        if(reactBoard[i].src == o){
             occupied_pos.push(i);
           }
       }
@@ -120,9 +125,9 @@ function App() {
   };
 
   const get_free_pos = () => {
-    let free_pos;
+    let free_pos = new Array();
     for(let i = 0; i < Math.pow(size_of_board,2); i++){
-      if(board[i] != PLAYER_SYMBOL && board[i] != COMPUTER_SYMBOL){
+      if(reactBoard[i].src != o && reactBoard[i].src != x){
           free_pos.push(i);
       }
     }
@@ -133,7 +138,7 @@ function App() {
 
     let is_full = false;
 
-    if(get_occupied_pos().size() == Math.pow(size_of_board,2)){
+    if(get_occupied_pos().length == Math.pow(size_of_board,2)){
         is_full = true;
     }
 
@@ -141,8 +146,9 @@ function App() {
   };
 
   const check_if_pos_is_occupied = (cordinate) => {
-    let occupied_pos;
+    let occupied_pos = new Array();
     occupied_pos = get_occupied_pos();
+    // console.log(occupied_pos)
     if((occupied_pos.includes(cordinate))){
         //The cordinate is free
         return true;
@@ -165,7 +171,6 @@ function App() {
     }
   
     let occupied_positions = get_occupied_pos(player);
-      // cout << occupied_positions.size() << endl;
   
     let is_won = game_is_won(occupied_positions);
   
@@ -212,37 +217,46 @@ function App() {
       switch (result)
       {
       case 1000:
+        return ( "<h1> You Won Congrats </h1>" )
           break;
       case -1000:
+        return ( "<h1> Computer Won  </h1>" )
           break;
       case 0:
+        return ( "<h1> DRAW </h1>" )
           break;
       default:
           break;
       }
   };
 
-  const minimax_optimization = (marker, depth, alpha, beta) =>
+  const minimax_optimization = (board, marker, depth, alpha, beta) =>
   {
+    // let board = reactBoard;
     let best_move = -1;
-    let best_score = (marker == x) ? ENEMY_WON : o;
-  
+    let best_score = (marker == COMPUTER_SYMBOL) ? ENEMY_WON : PLAYER_WON;
+    let gamer_image = (marker == COMPUTER_SYMBOL) ? o : x;
+
+
     if (is_board_full() || end_of_the_game() || depth == 0)
     {
       best_score = check_if_player_won(COMPUTER_SYMBOL);
-      return (best_score, best_move);
+      return [best_score, best_move];
     }
   
-    let legal_moves = get_free_pos();
+    let legal_moves = new Array();
+
+    legal_moves = get_free_pos();
   
-    for (let i = 0; i < legal_moves.size(); i++)
+    for (let i = 0; i < legal_moves.length; i++)
     {
       let curr_move = legal_moves[i];
-      board[curr_move].src = marker;
+      board[curr_move].src = gamer_image;
+      // setReactBoard(board);
   
       if (marker == COMPUTER_SYMBOL)
       {
-        let score = minimax_optimization(PLAYER_SYMBOL, depth - 1, alpha, beta)[0];
+        let score = minimax_optimization(board, PLAYER_SYMBOL, depth - 1, alpha, beta)[0];
         board[curr_move].src = blank;
   
         if (best_score < score)
@@ -251,7 +265,8 @@ function App() {
           best_move = curr_move;
   
           alpha = Math.max(alpha, best_score);
-          board[curr_move] = blank;
+          board[curr_move].src = blank;
+          // setReactBoard(board);
           if (beta <= alpha) 
           { 
             break; 
@@ -261,8 +276,9 @@ function App() {
       } 
       else
       {
-        let score = minimax_optimization(COMPUTER_SYMBOL, depth - 1, alpha, beta)[1];
-        board[curr_move] = blank;
+        let score = minimax_optimization(board, COMPUTER_SYMBOL, depth - 1, alpha, beta)[0];
+        board[curr_move].src = blank;
+        // setReactBoard(board);
   
         if (best_score > score)
         {
@@ -270,7 +286,9 @@ function App() {
           best_move = curr_move;
   
           beta = Math.min(beta, best_score);
-          board[curr_move] = blank;
+          board[curr_move].src = blank;
+          // setReactBoard(board);
+
           if (beta <= alpha) 
           { 
             break; 
@@ -279,7 +297,8 @@ function App() {
   
       }
   
-      board[curr_move.first][curr_move.second] = ' '; 
+      board[curr_move].src = blank;
+      // setReactBoard(board); 
   
     }
   
@@ -295,11 +314,11 @@ function App() {
         break;
 
     case 4:
-        max_depth = 5;
+        max_depth = 3;
         break;
 
     case 5:
-        max_depth = 4;
+        max_depth = 3;
         break;
 
     case 6:
@@ -317,13 +336,32 @@ function App() {
     return max_depth;
   }; 
 
+  const make_a_move = (e,index) => {
+    let board = reactBoard;
 
-
-  const make_a_move = () => {
-    while(!end_of_the_game)
-    {
-
+    if(!end_of_the_game()){
+      if(!check_if_pos_is_occupied(index))
+      {
+        $(`.position${index}`).attr('src', x);
+        board[index].src = x;
+        setReactBoard(board);
+        if(!end_of_the_game()){
+          let ai_move = minimax_optimization(reactBoard ,COMPUTER_SYMBOL,get_max_depth(),ENEMY_WON,PLAYER_WON)
+          $(`.position${ai_move[1]}`).attr('src', o);
+          board[ai_move[1]].src = o;
+          setReactBoard(board);
+        }
+        else{
+          alert(print_end_result(check_if_player_won(PLAYER_SYMBOL)));
+        }
+      }
     }
+    else{
+      alert(print_end_result(check_if_player_won(PLAYER_SYMBOL)))
+    }
+    
+
+
   };
 
   return (
@@ -331,21 +369,20 @@ function App() {
       <div className="boardSize">
         <button onClick={() => init_board(3)}>3</button>
         <button onClick={() => init_board(4)}>4</button>
-        <button onClick={() => init_board(5)}>5</button>
+        {/* <button onClick={() => init_board(5)}>5</button>
         <button onClick={() => init_board(6)}>6</button>
-        <button onClick={() => init_board(7)}>7</button>
+        <button onClick={() => init_board(7)}>7</button> */}
       </div>
+      <button onClick={() => restart_game()}>Restart</button>
       {size_of_board != 0 && 
       <div>
         <div className='board' style={{display: "grid", gridTemplateColumns: `repeat(${size_of_board},1fr)`, gridTemplateRows: `repeat(${size_of_board},1fr)`}}>
-        {board.map((position, index) => 
-          <img className={`field position${index}`} src={position.src} onClick={() => make_a_move()}></img>
+        {reactBoard.map((position, index) => 
+          <img key={index} className={`field position${index}`} src={position.src} onClick={(e) => make_a_move(e,index)}></img>
         )}
         </div>
-        <h1 className='information'>Your move ...</h1>
       </div>
-      }
-      
+      }      
     </div>
   );
 }
